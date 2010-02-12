@@ -1,0 +1,18 @@
+#! /usr/bin/ruby
+require 'rubygems'
+
+require File.join(File.dirname(__FILE__), 'lib', 'config')
+require File.join(File.dirname(__FILE__), 'lib', 'deployer')
+
+include SunRaise::PubConf
+
+
+remote_host 'twews.com'
+remote_user 'root'
+remote_deploy_lib '/tmp/deploy/test2'
+remote_site_lib '/tmp/www/test'
+git_url 'git://github.com/Paxa/web-configs.git'
+shared_dirs ["lib"]
+
+deployer = SunRaise::Deployer.new
+deployer.check
