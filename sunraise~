@@ -1,6 +1,5 @@
 #! /usr/bin/ruby
 require 'rubygems'
-require 'rainbow'
 
 require File.join(File.dirname(__FILE__), 'lib', 'config')
 require File.join(File.dirname(__FILE__), 'lib', 'deployer')
@@ -13,8 +12,7 @@ remote_user 'root'
 remote_deploy_lib '/tmp/deploy/test2'
 remote_site_lib '/tmp/www/test'
 git_url 'git://github.com/Paxa/web-configs.git'
-shared_dirs ['lib']
-linked_dirs ['logs', 'tmp']
+shared_dirs ["lib"]
 
 deployer = SunRaise::Deployer.new
 deployer.check

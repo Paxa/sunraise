@@ -1,4 +1,5 @@
 require 'singleton'
+require 'optparse'
 
 module SunRaise
   class Config
@@ -17,7 +18,9 @@ module SunRaise
       :remote_site_lib,
       :git_url,
       :shared_dirs,
-      :project_type
+      :linked_dirs,
+      :project_type,
+      :verbose
     ]
 
     @config_methods.each do |method_name|
@@ -28,7 +31,16 @@ module SunRaise
     end
 
     def initialize
-      @conf = {:project_type => :rails}
+      @conf = {:project_type => :rails, :verbose => false}
+      cl_options
+    end
+    
+    def cl_options
+      OptionParser.new do |opts|
+        opts.on("-v", "--[no-]verbose", "Run verbosely") do |v|
+          @conf[:verbose] = v
+        end
+      end.parse!
     end
 
   end

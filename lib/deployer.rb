@@ -33,8 +33,6 @@ module SunRaise
       last_repo_commit = (`git ls-remote #{conf[:git_url]}`).split("\t").first
 
       if last_commit.strip == last_repo_commit.strip
-        p last_commit
-        p last_repo_commit
         log_ok "Nothing to update"
         return
       end
@@ -71,7 +69,7 @@ module SunRaise
     private
     def ssh_exec command
       command = command.join " && " if command.is_a? Array
-      puts ">>>> #{command}"
+      puts ">>>>".color(:cyan) + " #{command}" if conf[:verbose]
       @ssh_ist ||= Net::SSH.start conf[:remote_host], conf[:remote_user]
       @ssh_out ||= []
       @ssh_out << @ssh_ist.exec!(command)
@@ -112,7 +110,7 @@ module SunRaise
     end
 
     def log_ok msg
-      puts ":: #{msg}"
+      puts ":: ".color(:green) + "#{msg}"
     end
   end
 end
