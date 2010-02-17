@@ -7,24 +7,25 @@ end
 require 'net/ssh'
 
 module SunRaise
+  # working horse
   class Deployer
-    def check
-      ssh_exec "cd #{current_path}"
-      if @ssh_out.last && @ssh_out.last =~ /No such file or directory/
-        @ssh_out.pop
-        init_deploy
-      else
+    
+    def go!
+      if !conf[:remake] && initiated?
         update
+      else
+        init_deploy
       end
 
-      puts "SSH OUT: \n" + @ssh_out.join("\n")
+      puts "SSH OUT: \n" + @ssh_out.join("\n") if conf[:verbose]
     end
 
     def init_deploy
+      destroy_existen! if conf[:remake]
       log_ok "initial deploy.."
       ssh_exec [
-        "mkdir -p #{conf[:remote_deploy_lib]}",
-        "cd #{conf[:remote_deploy_lib]}",
+        "mkdir -p #{deploy_path}",
+        "cd #{deploy_path}",
         "mkdir -p log shared tmp",
         "git clone #{conf[:git_url]} current"
       ]
@@ -36,40 +37,44 @@ module SunRaise
 
     def update
       last_commit = ssh_exec ["cd #{current_path}", "git log -1 --pretty=format:\"%H\""]
-      last_repo_commit = (`git ls-remote #{conf[:git_url]}`).split("\t").first
+      last_repo_commit = (`cd #{conf[:local_project_path]} && git ls-remote #{conf[:git_url]}`).split("\t").first
 
-      if last_commit.strip == last_repo_commit.strip
+      if !conf[:force] && last_commit.strip == last_repo_commit.strip
         log_ok "Nothing to update"
         return
       end
 
-      new_commits = (`git log #{last_commit}..HEAD --pretty=format:"%s"`).split("\n")
+      new_commits = (`cd #{conf[:local_project_path]} && git log #{last_commit}..HEAD --pretty=format:"%s"`).split("\n")
 
       log_ok "New commits: \n    #{new_commits.join "\n    "}"
-      new_dir = "pre_release"
+      @new_dir = "pre_release"
 
       ssh_exec [
-        "cd #{current_path}",
-        "rm ../#{new_dir} -rf", # if previous deploy was crashed
-        "mkdir ../#{new_dir}",  # making pre_resease dir
-        "cp -a -p -r `ls --ignore .git -A` ../#{new_dir}", # forking "current" dir
-        "mv .git ../#{new_dir}", # moving repo dir
-        "cd ../#{new_dir}",
+        "cd #{deploy_path}",
+        "rm #{@new_dir} .git_temp previous2 current2 -rf", # if previous deploy was crashed
+        "mv current/.git .git_temp", # moving repo dir
+        "cp current #{@new_dir}", # clone sitedir without .git
+        "mv .git_temp #{@new_dir}/.git", # move git in pre_release folder
+        "cd #{@new_dir}",
         "git pull origin master"
       ]
       log_ok "Forked, git updated"
 
-      make_links new_dir
+      make_links @new_dir
+      
+            
+      release!
+    end
 
+    def release!
       ssh_exec [
         "cd #{deploy_path}", # folder magic :) old current => previous, pre_release => current
-        "rm previous2 current2 -rf",
         "mv current current2",
-        "mv #{new_dir} current",
+        "mv #{@new_dir} current",
         "if [ -d previous ]; then mv previous previous2 -f; fi",
         "mv current2 previous"
       ]
-      log_ok "Files magic complite!"
+      log_ok "Released!"
     end
 
     private
@@ -90,15 +95,13 @@ module SunRaise
         links << "ln -s ../shared/#{dir} #{dir}"
       end
 
-      if conf[:project_type] == :rails
-        ssh_exec [
-          "cd #{File.join deploy_path, dist_dir}",
-          "rm logs tmp -rf",
-          "mkdir ../shared/logs ../shared/tmp -p",
-          "ln -s ../shared/logs logs",
-          "ln -s ../shared/tmp tmp"
-        ] + links
+      conf[:linked_dirs].each do |dir|
+        links << "rm #{dir} -rf"
+        links << "mkdir ../#{dir} -p"
+        links << "ln -s ../#{dir} #{dir}"
       end
+
+      ssh_exec ["cd #{File.join deploy_path, dist_dir}"] + links
 
       log_ok "Maked links"
     end
@@ -108,15 +111,26 @@ module SunRaise
     end
 
     def current_path
-      File.join conf[:remote_deploy_lib], 'current'
+      File.join conf[:deploy_to], 'current'
     end
 
     def deploy_path
-      conf[:remote_deploy_lib]
+      conf[:deploy_to]
     end
 
     def log_ok msg
-      puts ":: ".color(:green) + "#{msg}"
+      puts ":: ".color(:green) + "#{msg}".bright
+    end
+
+    def initiated?
+      ssh_exec "cd #{current_path}"
+      last_msg = @ssh_out.pop
+      !(last_msg && last_msg =~ /No such file or directory/)
+    end
+
+    def destroy_existen!
+      log_ok "Removing existen deploy dir"
+      ssh_exec "rm #{deploy_path} -rf"
     end
   end
 end

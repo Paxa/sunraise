@@ -2,6 +2,7 @@ require 'singleton'
 require 'optparse'
 
 module SunRaise
+  # configurator class
   class Config
 
     include Singleton
@@ -14,13 +15,16 @@ module SunRaise
     @config_methods = [
       :remote_host,
       :remote_user,
-      :remote_deploy_lib,
-      :remote_site_lib,
+      :deploy_to,
+      :then_link_to,
       :git_url,
       :shared_dirs,
       :linked_dirs,
-      :project_type,
-      :verbose
+      :local_project_path,
+      :verbose,
+      :force,
+      :release,
+      :remake
     ]
 
     @config_methods.each do |method_name|
@@ -31,14 +35,26 @@ module SunRaise
     end
 
     def initialize
-      @conf = {:project_type => :rails, :verbose => false}
+      @conf = {:verbose => false, :local_project_path => '.', :release => true}
       cl_options
     end
     
     def cl_options
       OptionParser.new do |opts|
-        opts.on("-v", "--[no-]verbose", "Run verbosely") do |v|
-          @conf[:verbose] = v
+        opts.on("-v", "--[no-]verbose", "Run verbosely") do |verbose|
+          @conf[:verbose] = verbose
+        end
+
+        opts.on("-f", "--[no-]force", "Deploy even there are no new commits") do |force|
+          @conf[:force] = force
+        end
+
+        opts.on("-n", "--no-reelase", "Do not replace 'current' dir and start test server") do |no_release|
+          @conf[:release] = !no_release
+        end
+
+        opts.on("--remake", "Delete current deploy and make initial deploy") do |remake|
+          @conf[:remake] = remake
         end
       end.parse!
     end
