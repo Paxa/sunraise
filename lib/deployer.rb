@@ -101,14 +101,14 @@ module SunRaise
       links = []
       conf[:shared_dirs].each do |dir|
         links << "rm #{dir} -rf"
-        links << "mkdir ../shared/#{dir} -p"
-        links << "ln -s ../shared/#{dir} #{dir}"
+        links << "mkdir #{deploy_path}/shared/#{dir} -p"
+        links << "ln -s #{deploy_path}/shared/#{dir} #{dir}"
       end
 
       conf[:linked_dirs].each do |dir|
         links << "rm #{dir} -rf"
-        links << "mkdir ../#{dir} -p"
-        links << "ln -s ../#{dir} #{dir}"
+        links << "mkdir #{deploy_path}/#{dir} -p"
+        links << "ln -s #{deploy_path}/#{dir} #{dir}"
       end
 
       ssh_exec ["cd #{File.join deploy_path, dist_dir}"] + links
