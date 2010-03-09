@@ -1,0 +1,26 @@
+#!/usr/bin/env ruby
+
+require 'rubygems'
+require 'rainbow'
+
+require File.join(File.dirname(__FILE__), '..', 'lib', 'config')
+require File.join(File.dirname(__FILE__), '..', 'lib', 'deployer')
+
+include SunRaise::PubConf
+
+
+if File.expand_path(__FILE__) == File.expand_path(File.join(Dir.pwd, 'sunraise'))
+  puts "Run it from you app folder, containing sunraise file with deploy instructions"
+  exit
+end
+
+unless  File.file?(File.join Dir.pwd, 'sunraise')
+  puts "No sunraise file found at #{Dir.pwd}"
+  exit
+end
+
+
+at_exit { SunRaise::Deployer.new.go! }
+
+
+load File.join Dir.pwd, 'sunraise'

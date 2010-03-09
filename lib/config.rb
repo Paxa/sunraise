@@ -6,7 +6,7 @@ module SunRaise
   class Config
 
     include Singleton
-    attr_accessor :conf
+    attr_accessor :conf, :callbacks
 
     class << self
       attr_accessor :config_methods
@@ -24,7 +24,11 @@ module SunRaise
       :verbose,
       :force,
       :release,
-      :remake
+      :remake,
+      :test_rails_app,
+      :auto_migrate,
+      :help,
+      :destroy
     ]
 
     @config_methods.each do |method_name|
@@ -35,7 +39,16 @@ module SunRaise
     end
 
     def initialize
-      @conf = {:verbose => false, :local_project_path => '.', :release => true}
+      @callbacks = {:after => ''}
+      @conf = {
+        :verbose => false, 
+        :local_project_path => '.', 
+        :release => true, 
+        :test_rails_app => true, 
+        :auto_migrate => true,
+        :help => false
+      }
+
       cl_options
     end
     
@@ -56,6 +69,15 @@ module SunRaise
         opts.on("--remake", "Delete current deploy and make initial deploy") do |remake|
           @conf[:remake] = remake
         end
+
+        opts.on("-d", "--destroy", "Delete current deploy and make initial deploy") do |destroy|
+          @conf[:destroy] = destroy
+        end
+
+        opts.on("-h", "--help", "Show this help") do |help|
+          @conf[:help] = true
+          puts opts
+        end
       end.parse!
     end
 
@@ -66,6 +88,10 @@ module SunRaise
       define_method method_name do |value|
         SunRaise::Config.instance.send method_name, value
       end
+    end
+
+    def after_deploy &block
+      SunRaise::Config.instance.callbacks[:after] = block
     end
   end
 end

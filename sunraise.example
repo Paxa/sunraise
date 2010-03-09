@@ -1,0 +1,12 @@
+remote_host 'twews.com'
+remote_user 'root'
+
+git_url 'git://github.com/Paxa/sunraise_test_app.git'
+
+deploy_to '/tmp/deploy/suntest'
+then_link_to '/tmp/www/suntest'
+
+shared_dirs ['lib']
+linked_dirs ['logs', 'tmp']
+
+local_project_path "/home/paxa/Dropbox/sunraise/test/suntest"

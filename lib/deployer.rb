@@ -11,11 +11,15 @@ module SunRaise
   class Deployer
     
     def go!
+      return if conf[:help]
+      return destroy_existen! if conf[:destroy]
       if !conf[:remake] && initiated?
         update
       else
         init_deploy
       end
+
+      callbacks :after
 
       puts "SSH OUT: \n" + @ssh_out.join("\n") if conf[:verbose]
     end
@@ -29,13 +33,17 @@ module SunRaise
         "mkdir -p log shared tmp",
         "git clone #{conf[:git_url]} current"
       ]
-      log_ok ""
+      log_ok "Created dir and cloned repo"
+      
+      test_rails_app! 'current' if conf[:test_rails_app]
+      auto_migrate! 'current' if conf[:auto_migrate]
 
-      log_ok "Maked new dirs and cloned repo"
+      log_ok "Made new dirs and cloned repo"
       make_links 'current'
     end
 
     def update
+      
       last_commit = ssh_exec ["cd #{current_path}", "git log -1 --pretty=format:\"%H\""]
       last_repo_commit = (`cd #{conf[:local_project_path]} && git ls-remote #{conf[:git_url]}`).split("\t").first
 
@@ -61,9 +69,11 @@ module SunRaise
       log_ok "Forked, git updated"
 
       make_links @new_dir
+
+      test_rails_app! @new_dir if conf[:test_rails_app]
+      auto_migrate! @new_dir if conf[:auto_migrate]
       
-            
-      release!
+      release! if conf[:release]
     end
 
     def release!
@@ -102,24 +112,8 @@ module SunRaise
       end
 
       ssh_exec ["cd #{File.join deploy_path, dist_dir}"] + links
-
-      log_ok "Maked links"
-    end
-
-    def conf
-      SunRaise::Config.instance.conf
-    end
-
-    def current_path
-      File.join conf[:deploy_to], 'current'
-    end
-
-    def deploy_path
-      conf[:deploy_to]
-    end
-
-    def log_ok msg
-      puts ":: ".color(:green) + "#{msg}".bright
+      @ssh_out.each {|m| puts m}
+      log_ok "Made links"
     end
 
     def initiated?
@@ -132,5 +126,72 @@ module SunRaise
       log_ok "Removing existen deploy dir"
       ssh_exec "rm #{deploy_path} -rf"
     end
+
+    def test_rails_app! dir
+      @app_about ||= rails_app_about dir
+      if !@app_about.index('Application root')
+        if !@app_about.index('Database schema version')
+          log_error "Rails app test fail"
+        else
+          log_error "Rails app test: Database didn't configurated"
+        end
+          puts @app_about
+          log_error "Deploy aborted, use " + "ssh #{conf[:remote_user]}@#{conf[:remote_host]}".italic + " to fix it"
+          exit
+      else
+        log_ok "Rails app successfully tested"
+      end
+    end
+
+    def auto_migrate! dir
+      @app_about ||= rails_app_about dir
+      matches = @app_about.match(/Database schema version\s+ ([0-9]+)/)
+      remote_magration_version = matches && matches.size > 0 && matches[1] || 0
+      local_about = `#{File.join conf[:local_project_path], 'script', 'about'}`
+      local_migration_version = local_about.match(/Database schema version\s+ ([0-9]+)/)[1]
+      if remote_magration_version == local_migration_version
+        msg_ok "No new migrations"
+      else
+        log_ok "Rinning rake db:migrate"
+        puts ssh_exec ["cd #{File.join deploy_path, dir}", "rake db:migrate RAILS_ENV=production"] # run migrations
+      end
+    end
+
+    def rails_app_about dir
+      ssh_exec "RAILS_ENV=production " + File.join(deploy_path, dir, 'script', 'about') # run script/about
+    end
+
+    def conf
+      SunRaise::Config.instance.conf
+    end
+
+    def callbacks name
+      c = SunRaise::Config.instance.callbacks
+
+      if c[name].class == Proc
+        instance_eval &c[name]
+      end
+    end
+
+    def current_path
+      File.join conf[:deploy_to], 'current'
+    end
+
+    def deploy_path
+      conf[:deploy_to]
+    end
+
+    def app_path
+      File.join deploy_path, (conf[:release] ? 'current' : 'pre_release' )
+    end
+
+    def log_ok msg
+      puts ":: ".color(:green) + "#{msg}".bright
+    end
+
+    def log_error msg
+      puts "!! ".bright.color(:red) + "#{msg}".bright
+    end
+
   end
 end
