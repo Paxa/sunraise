@@ -56,16 +56,23 @@ module SunRaise
 
       log_ok "New commits: \n    #{new_commits.join "\n    "}"
       @new_dir = "pre_release"
-
+      
       ssh_exec [
         "cd #{deploy_path}",
         "rm #{@new_dir} .git_temp previous2 current2 -rf", # if previous deploy was crashed
         "mv current/.git .git_temp", # moving repo dir
-        "cp current #{@new_dir}", # clone sitedir without .git
+        "cp current #{@new_dir} -r", # clone sitedir without .git
         "mv .git_temp #{@new_dir}/.git", # move git in pre_release folder
+      ]
+
+      ssh_exec (conf[:shared_dirs] + conf[:linked_dirs]).map {|dir| "rm #{deploy_path}/#{@new_dir}/#{dir}" }
+
+      ssh_exec [
         "cd #{@new_dir}",
+        "git reset HEAD --hard",
         "git pull origin master"
       ]
+
       log_ok "Forked, git updated"
 
       make_links @new_dir
@@ -99,10 +106,10 @@ module SunRaise
 
     def make_links dist_dir
       links = []
-      conf[:shared_dirs].each do |dir|
+      conf[:shared_dirs].each do |link_to, dir|
         links << "rm #{dir} -rf"
         links << "mkdir #{deploy_path}/shared/#{dir} -p"
-        links << "ln -s #{deploy_path}/shared/#{dir} #{dir}"
+        links << "ln -s #{deploy_path}/shared/#{link_to} #{dir}"
       end
 
       conf[:linked_dirs].each do |dir|
@@ -195,3 +202,4 @@ module SunRaise
 
   end
 end
+
