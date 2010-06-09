@@ -1,0 +1,17 @@
+remote_host 'production-server.com'
+remote_user 'root'
+
+git_url '<%= remote %>'
+
+
+deploy_to '/srv/deploy/<%= dir %>'
+then_link_to '/srv/www/<%= dir %>'
+
+shared_dirs 'public/system' => 'images'
+
+linked_dirs ['log', 'tmp']
+
+after_deploy do
+  log_ok "Restarting apps"
+  ssh_exec ["cd #{app_path}", 'thin stop -C config/thin.yml', 'thin start -C config/thin.yml']
+end

@@ -4,10 +4,16 @@ require 'rubygems'
 require 'rainbow'
 
 require File.join(File.dirname(__FILE__), '..', 'lib', 'config')
-require File.join(File.dirname(__FILE__), '..', 'lib', 'deployer')
 
 include SunRaise::PubConf
 
+SunRaise::Config.instance
+
+if ARGV == ['generate']
+  require File.join(File.dirname(__FILE__), '..', 'lib', 'generator')
+  SunRaise::Generator.run
+  exit
+end
 
 if File.expand_path(__FILE__) == File.expand_path(File.join(Dir.pwd, 'sunraise'))
   puts "Run it from you app folder, containing sunraise file with deploy instructions"
@@ -15,10 +21,12 @@ if File.expand_path(__FILE__) == File.expand_path(File.join(Dir.pwd, 'sunraise')
 end
 
 unless  File.file?(File.join Dir.pwd, 'sunraise')
-  puts "No sunraise file found at #{Dir.pwd}"
+  puts "./sunraise".color(:green) + " file not found in current directory"
+  puts "Run " + "sunraise generate".color(:green) + " to generate it or create it manualy"
   exit
 end
 
+require File.join(File.dirname(__FILE__), '..', 'lib', 'deployer')
 
 at_exit { SunRaise::Deployer.new.go! }
 

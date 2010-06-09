@@ -65,9 +65,10 @@ module SunRaise
         "mv .git_temp #{@new_dir}/.git", # move git in pre_release folder
       ]
 
-      ssh_exec (conf[:shared_dirs] + conf[:linked_dirs]).map {|dir| "rm #{deploy_path}/#{@new_dir}/#{dir}" }
+      ssh_exec (conf[:shared_dirs].keys + conf[:linked_dirs]).map {|dir| "rm #{deploy_path}/#{@new_dir}/#{dir}" }
 
       ssh_exec [
+        "cd #{deploy_path}",
         "cd #{@new_dir}",
         "git reset HEAD --hard",
         "git pull origin master"
@@ -106,9 +107,9 @@ module SunRaise
 
     def make_links dist_dir
       links = []
-      conf[:shared_dirs].each do |link_to, dir|
+      conf[:shared_dirs].each do |dir, link_to|
         links << "rm #{dir} -rf"
-        links << "mkdir #{deploy_path}/shared/#{dir} -p"
+        links << "mkdir #{deploy_path}/shared/#{link_to} -p"
         links << "ln -s #{deploy_path}/shared/#{link_to} #{dir}"
       end
 
@@ -157,7 +158,7 @@ module SunRaise
       local_about = `#{File.join conf[:local_project_path], 'script', 'about'}`
       local_migration_version = local_about.match(/Database schema version\s+ ([0-9]+)/)[1]
       if remote_magration_version == local_migration_version
-        msg_ok "No new migrations"
+        log_ok "No new migrations"
       else
         log_ok "Rinning rake db:migrate"
         puts ssh_exec ["cd #{File.join deploy_path, dir}", "rake db:migrate RAILS_ENV=production"] # run migrations
@@ -202,4 +203,3 @@ module SunRaise
 
   end
 end
-

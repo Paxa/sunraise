@@ -48,7 +48,6 @@ module SunRaise
         :auto_migrate => true,
         :help => false
       }
-
       cl_options
     end
     
@@ -57,7 +56,7 @@ module SunRaise
         opts.on("-v", "--[no-]verbose", "Run verbosely") do |verbose|
           @conf[:verbose] = verbose
         end
-
+                
         opts.on("-f", "--[no-]force", "Deploy even there are no new commits") do |force|
           @conf[:force] = force
         end
