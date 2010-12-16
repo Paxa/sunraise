@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name              = "sunraise"
-  s.version           = "0.1.4"
+  s.version           = "0.1.5"
   s.summary           = "Super-fast and simple rails deployment."
   s.description       = "Super-fast and simple rails deployment"
   s.author            = "Pavel Evstigneev"

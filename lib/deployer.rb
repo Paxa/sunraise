@@ -11,6 +11,7 @@ module SunRaise
   class Deployer
     
     def go!
+      conf[:shared_dirs] ||= {}
       return if conf[:help]
       return destroy_existen! if conf[:destroy]
       if !conf[:remake] && initiated?
